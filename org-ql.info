@@ -566,7 +566,8 @@ File: README.info,  Node: Functions / Macros,  Next: Dynamic block,  Prev: Queri
 
    • 
         • • 
-        • • • 
+        • • • • • 
+        • 
 * Menu:
 
 * Agenda-like views::
@@ -1454,37 +1455,37 @@ Node: General predicates10841
 Node: Ancestor/descendant predicates16254
 Node: Date/time predicates17382
 Node: Functions / Macros20037
-Node: Agenda-like views20314
-Node: Listing / acting-on results21719
-Node: Custom predicates26940
-Node: Dynamic block30431
-Node: Links33129
-Node: Tips33816
-Node: Changelog34134
-Node: 06-pre34830
-Node: 0535270
-Node: 04936747
-Node: 04837021
-Node: 04737368
-Node: 04637763
-Node: 04538163
-Node: 04438522
-Node: 04338879
-Node: 04239074
-Node: 04139235
-Node: 0439476
-Node: 03243409
-Node: 03143788
-Node: 0343985
-Node: 02346960
-Node: 02247188
-Node: 02147456
-Node: 0247655
-Node: 0151690
-Node: Notes51791
-Node: Comparison with Org Agenda searches51953
-Node: org-sidebar52825
-Node: License53104
+Node: Agenda-like views20335
+Node: Listing / acting-on results21740
+Node: Custom predicates26961
+Node: Dynamic block30452
+Node: Links33150
+Node: Tips33837
+Node: Changelog34155
+Node: 06-pre34851
+Node: 0535291
+Node: 04936768
+Node: 04837042
+Node: 04737389
+Node: 04637784
+Node: 04538184
+Node: 04438543
+Node: 04338900
+Node: 04239095
+Node: 04139256
+Node: 0439497
+Node: 03243430
+Node: 03143809
+Node: 0344006
+Node: 02346981
+Node: 02247209
+Node: 02147477
+Node: 0247676
+Node: 0151711
+Node: Notes51812
+Node: Comparison with Org Agenda searches51974
+Node: org-sidebar52846
+Node: License53125
 
 End Tag Table
 

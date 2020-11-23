@@ -258,15 +258,19 @@ The following predicates, in addition to the keyword arguments, can also take a 
 
 ** Functions / Macros
 :PROPERTIES:
-:TOC:      ignore-children
+:TOC:     :include descendants
 :END:
-
--  [[#agenda-like-views][Agenda-like views]]
-  -  [[#function-org-ql-block][Function: org-ql-block]]
--  [[#listing--acting-on-results][Listing / acting-on results]]
-  -  [[#function-org-ql-select][Function: org-ql-select]]
-  -  [[#function-org-ql-query][Function: org-ql-query]]
-  -  [[#macro-org-ql][Macro: org-ql]]
+:CONTENTS:
+- [[#agenda-like-views][Agenda-like views]]
+  - [[#function-org-ql-block][Function: org-ql-block]]
+- [[#listing--acting-on-results][Listing / acting-on results]]
+  - [[#caching][Caching]]
+  - [[#function-org-ql-select][Function: org-ql-select]]
+  - [[#function-org-ql-query][Function: org-ql-query]]
+  - [[#macro-org-ql][Macro: org-ql]]
+- [[#custom-predicates][Custom predicates]]
+  - [[#macro-org-ql-defpred][Macro: org-ql-defpred]]
+:END:
 
 *** Agenda-like views
 
