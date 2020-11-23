@@ -12,6 +12,7 @@ So you haven't decided on a long-term solution, but the meetings aren't going to
 :TOC:      :include siblings :ignore this
 :END:
 :CONTENTS:
+- [[#using-built-in-predicates][Using built-in predicates]]
 - [[#a-custom-person-predicate][A custom (person) predicate]]
 - [[#searching-for-multiple-people-at-once][Searching for multiple people at once]]
 - [[#normalizing-queries-to-rewrite-arguments][Normalizing queries to rewrite arguments]]
@@ -20,6 +21,25 @@ So you haven't decided on a long-term solution, but the meetings aren't going to
 - [[#predicate-aliases][Predicate aliases]]
 - [[#appendix-anaphoric-macros][Appendix: Anaphoric macros]]
 :END:
+
+* Using built-in predicates
+
+You could start by using built-in Org QL predicates to search your data.  For example:
+
+#+BEGIN_SRC elisp :results list :exports both :cache yes
+  (org-ql-query :select '(org-get-heading :no-tags)
+                :from (current-buffer)
+                :where '(or (tags "personAlice")
+                            (property "person" "Bob")))
+#+END_SRC
+
+#+RESULTS[91a413cda23cb65d6bb99212e111f283e5a5c910]:
+-  [#A] Loud pet parakeet
+-  [#C] Missing sticky notes
+-  [#C] Dirty dishes in sink
+-  [#A] Stinky coffee breath
+
+That was easy enough, but it's not very...semantic.  You have to think about the implementation details: Alice uses tags, Bob uses properties, and what if Charlie uses both?  It starts to feel complicated, and it's a lot to type out every time.  Is there an easier way?
 
 * A custom ~(person)~ predicate
 
@@ -124,9 +144,15 @@ That was easy!
 
 * Normalizing queries to rewrite arguments
 
-Now, all this is well and good if you don't have hundreds of thousands of Org entries in your files.  But what if you do?  All that =concat='ing happening on every entry could add up, and the query might take a few seconds.  What if we could do that stringing-along just once, before running the query?
+Now, all this is well and good if you don't have hundreds of thousands of Org entries in your files.  But what if you do?  All that =concat='ing happening on every entry could add up, and the query might take a few seconds.  What if we could do that stringing-along just once, before running the query?  We want to turn our ~(person "Alice" "Bob")~ query into this, with the =:personNAME:= strings already made and the per-person ~(property ...)~ predicates also included:
 
-In fact, we can, using a query normalizer.  Normalizers are =pcase= forms (I /know/) that normalize query expressions before execution.  We can use one to rewrite the query ahead of time.  Watch this:
+#+BEGIN_SRC elisp
+  (or (tags "personAlice" "personBob")
+      (property "person" "Alice")
+      (property "person" "Bob"))
+#+END_SRC
+
+Can we do that?  In fact, we can, by using a query normalizer.  Normalizers are =pcase= forms (I /know/) that normalize query expressions before execution.  We can use one to rewrite the query ahead of time, like this:
 
 #+BEGIN_SRC elisp :results silent :exports code
   (org-ql-defpred person (&rest names)
@@ -154,7 +180,7 @@ Now, don't faint from all the backquoting and unquoting--it's just Lisp, nothing
       (property "person" "Bob"))
 #+END_SRC
 
-And, as they say, Bob's your uncle!  Even if he isn't, let's see if it works:
+And, as they say, Bob's your uncle!  Or even if he isn't, let's see if it works:
 
 #+BEGIN_SRC elisp :results list :exports both :cache yes
   (org-ql-query :select '(org-get-heading :no-tags)
