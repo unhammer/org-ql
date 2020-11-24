@@ -670,7 +670,7 @@ Arguments STRING, POS, FILL, and LEVEL are according to
 ;; This section implements parsing of "plain," non-Lisp queries using the `peg'
 ;; library.  NOTE: This needs to appear after the predicates are defined.
 
-;; (require 'peg)
+(require 'peg)
 ;;
 ;; (eval-and-compile
 ;;   ;; This `eval-when' is necessary, otherwise the macro does not define
