@@ -722,7 +722,9 @@ Arguments STRING, POS, FILL, and LEVEL are according to
   Builds the PEG expression using PREDICATES (which should be the
   value of `org-ql-predicates')."
     ;; HACK:
+    (message "LOADING PEG")
     (require 'peg)
+    (message "LOADED PEG")
     (let* ((names (--map (symbol-name (plist-get (cdr it) :name))
                          predicates))
            (aliases (->> predicates
