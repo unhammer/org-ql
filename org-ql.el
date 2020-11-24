@@ -683,12 +683,12 @@ Arguments STRING, POS, FILL, and LEVEL are according to
                        -non-nil
                        -flatten
                        (-map #'symbol-name)))
-         (predicates (->> (append names aliases)
-                          -uniq
-                          ;; Sort the keywords longest-first to work around what seems to be an
-                          ;; obscure bug in `peg': when one keyword is a substring of another,
-                          ;; and the shorter one is listed first, the shorter one fails to match.
-                          (-sort (-on #'> #'length))))
+         (predicate-names (->> (append names aliases)
+                               -uniq
+                               ;; Sort the keywords longest-first to work around what seems to be an
+                               ;; obscure bug in `peg': when one keyword is a substring of another,
+                               ;; and the shorter one is listed first, the shorter one fails to match.
+                               (-sort (-on #'> #'length))))
          (pexs `((query (+ term
                            (opt (+ (syntax-class whitespace) (any)))))
                  (term (or (and negation (list positive-term)
@@ -701,7 +701,7 @@ Arguments STRING, POS, FILL, and LEVEL are according to
                  (plain-string (or quoted-arg unquoted-arg))
                  (predicate-with-args (substring predicate) ":" args)
                  (predicate-without-args (substring predicate) ":")
-                 (predicate (or ,@predicates))
+                 (predicate (or ,@predicate-names))
                  (args (list (+ (and (or keyword-arg quoted-arg unquoted-arg) (opt separator)))))
                  (keyword-arg (and keyword "=" `(kw -- (intern (concat ":" kw)))))
                  (keyword (substring (+ (not (or separator "=" "\"" (syntax-class whitespace))) (any))))
@@ -709,29 +709,31 @@ Arguments STRING, POS, FILL, and LEVEL are according to
                  (unquoted-arg (substring (+ (not (or separator "\"" (syntax-class whitespace))) (any))))
                  (negation "!")
                  (separator "," )))
-         ;; HACK: We use a quoted lambda form, because otherwise the resulting closure's
-         ;; environment would have variables unused in the `with-peg-rules' form, which causes
-         ;; "unused lexical variable" warnings when calling `byte-compile' on the closure.
-         (lambda-form `(lambda (input &optional boolean)
-                         "Return query parsed from plain query string INPUT.
-  Multiple predicates are combined with BOOLEAN (default: `and')."
-                         (unless (s-blank-str? input)
-                           (let* ((boolean (or boolean 'and))
-                                  (parsed-sexp
-                                   (with-temp-buffer
-                                     (insert input)
-                                     (goto-char (point-min))
-                                     ;; HACK: Try as I might, I haven't found any way to avoid using
-                                     ;; either `eval' or `macroexpand'.  I wish there were a peg function
-                                     ;; that took a list of rules and returned a predicate function.
-                                     ,(macroexpand
-                                       `(with-peg-rules ,pexs
-                                          (peg-run (peg ,(caar pexs)) #'peg-signal-failure))))))
-                             (pcase parsed-sexp
-                               (`(,one-predicate) one-predicate)
-                               (`(,_ . ,_) (cons boolean (reverse parsed-sexp)))
-                               (_ nil)))))))
-    (fset 'org-ql--query-string-to-sexp (byte-compile lambda-form))))
+         (closure (lambda (input &optional boolean)
+                    "Return query parsed from plain query string INPUT.
+  Multiple predicate-names are combined with BOOLEAN (default: `and')."
+                    ;; HACK: Silence unused lexical variable warnings.
+                    (ignore predicates predicate-names names aliases)
+                    (unless (s-blank-str? input)
+                      (let* ((boolean (or boolean 'and))
+                             (parsed-sexp
+                              (with-temp-buffer
+                                (insert input)
+                                (goto-char (point-min))
+                                ;; Copied from `peg-parse'.  There is no function in `peg' that
+                                ;; returns a matcher function--every entry point is a macro,
+                                ;; which means that, since we define our PEG rules at runtime when
+                                ;; predicate-names are defined, we either have to use `eval', or we
+                                ;; have to borrow some code.  It ends up that we only have to
+                                ;; borrow this `with-peg-rules' call, which isn't too bad.
+                                (eval `(with-peg-rules ,pexs
+                                         (peg-run (peg ,(caar pexs)) #'peg-signal-failure)))
+                                )))
+                        (pcase parsed-sexp
+                          (`(,one-predicate) one-predicate)
+                          (`(,_ . ,_) (cons boolean parsed-sexp))
+                          (_ nil)))))))
+    (fset 'org-ql--query-string-to-sexp closure)))
 
 ;;;;; Predicate definition
 
