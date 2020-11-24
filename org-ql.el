@@ -1001,14 +1001,15 @@ It would be expanded to:
          ;; SOMEDAY: Use `map-elt' here, after map 2.1 can be automatically installed in CI sandbox...
          (setf (alist-get ',predicate-name org-ql-predicates)
                `(:name ,',name :aliases ,',aliases :fn ,',fn-name :docstring ,,docstring :args ,',args
-                       :normalizers ,',normalizers :preambles ,',preambles)))
+                       :normalizers ,',normalizers :preambles ,',preambles))
+         (unless org-ql-defpred-defer
+           ;; Reversing preserves the order in which predicates were defined.
+           (org-ql--define-normalize-query-fn (reverse org-ql-predicates))
+           (org-ql--define-query-preamble-fn (reverse org-ql-predicates))
+           (org-ql--def-query-string-to-sexp-fn (reverse org-ql-predicates))
+           ))
 
-       (unless org-ql-defpred-defer
-         ;; Reversing preserves the order in which predicates were defined.
-         (org-ql--define-normalize-query-fn (reverse org-ql-predicates))
-         (org-ql--define-query-preamble-fn (reverse org-ql-predicates))
-         (org-ql--def-query-string-to-sexp-fn (reverse org-ql-predicates))
-         ))))
+       )))
 
 (defmacro org-ql--from-to-on ()
   "For internal use.
