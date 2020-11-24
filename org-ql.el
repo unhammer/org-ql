@@ -721,6 +721,8 @@ Arguments STRING, POS, FILL, and LEVEL are according to
     "Define function `org-ql--query-string-to-sexp' according to PREDICATES.
   Builds the PEG expression using PREDICATES (which should be the
   value of `org-ql-predicates')."
+    ;; HACK:
+    (require 'peg)
     (let* ((names (--map (symbol-name (plist-get (cdr it) :name))
                          predicates))
            (aliases (->> predicates
