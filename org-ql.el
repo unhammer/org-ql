@@ -96,10 +96,11 @@ but the match groups were changed, so they are not compatible.")
 
 (defvar org-ql--today nil)
 
-(defvar org-ql-use-preamble t
-  ;; MAYBE: Naming things is hard.  There must be a better term than "preamble."
-  "Use query preambles to speed up searches.
-May be disabled for debugging, benchmarks, etc.")
+(eval-and-compile
+  (defvar org-ql-use-preamble t
+    ;; MAYBE: Naming things is hard.  There must be a better term than "preamble."
+    "Use query preambles to speed up searches.
+May be disabled for debugging, benchmarks, etc."))
 
 (defvar org-ql-cache (make-hash-table :weakness 'key)
   ;; IIUC, setting weakness to `key' means that, when a buffer is closed,
@@ -671,33 +672,33 @@ Arguments STRING, POS, FILL, and LEVEL are according to
 
 (require 'peg)
 
-;; Fix compiler warnings probably caused by `peg' not using lexical-binding.
-;; TODO: File bug report upstream.
-(defvar peg-errors nil)
-(defvar peg-stack nil)
-
-(defmacro org-ql--peg-parse-string (rules string &optional noerror)
-  "Parse STRING according to RULES."
-  ;; This sentence was in the docstring but Checkdoc is complaining,
-  ;; so moving it to a comment: "If NOERROR is non-nil, push nil
-  ;; resp. t if the parse failed resp. succeded instead of signaling
-  ;; an error."
-
-  ;; Unfortunately, this macro was moved to peg-tests.el, so we copy it here.
-  `(with-temp-buffer
-     (insert ,string)
-     (goto-char (point-min))
-     ,(if noerror
-	  (let ((entry (make-symbol "entry"))
-		(start (caar rules)))
-	    `(peg-parse (,entry (or (and ,start `(-- t)) ""))
-			. ,rules))
-	`(peg-parse . ,rules))))
-
-(cl-eval-when (compile load eval)
+(eval-and-compile
   ;; This `eval-when' is necessary, otherwise the macro does not define
   ;; the function correctly, apparently because `org-ql-predicates'
   ;; ends up being not defined correctly at expansion time.
+
+  ;; Fix compiler warnings probably caused by `peg' not using lexical-binding.
+  ;; TODO: File bug report upstream.
+  (defvar peg-errors nil)
+  (defvar peg-stack nil)
+
+  (defmacro org-ql--peg-parse-string (rules string &optional noerror)
+    "Parse STRING according to RULES."
+    ;; This sentence was in the docstring but Checkdoc is complaining,
+    ;; so moving it to a comment: "If NOERROR is non-nil, push nil
+    ;; resp. t if the parse failed resp. succeded instead of signaling
+    ;; an error."
+
+    ;; Unfortunately, this macro was moved to peg-tests.el, so we copy it here.
+    `(with-temp-buffer
+       (insert ,string)
+       (goto-char (point-min))
+       ,(if noerror
+            (let ((entry (make-symbol "entry"))
+                  (start (caar rules)))
+              `(peg-parse (,entry (or (and ,start `(-- t)) ""))
+                          . ,rules))
+          `(peg-parse . ,rules))))
 
   (defun org-ql--def-query-string-to-sexp-fn (predicates)
     "Define function `org-ql--query-string-to-sexp' according to PREDICATES.
@@ -753,8 +754,17 @@ Multiple predicates are combined with BOOLEAN."
 
 ;;;;; Predicate definition
 
-(defvar org-ql-defpred-defer nil
-  "Defer expensive function redefinitions when defining predicates.
+;; These functions *will* be defined at runtime, so we silence
+;; compiler warnings about them:
+(declare-function org-ql--normalize-query "org-ql" (query) t)
+(declare-function org-ql--query-preamble "org-ql" (query) t)
+
+(eval-and-compile
+  ;; NOTE: It's not strictly necessary to do this at compile time, but
+  ;; doing so helps avoid compile warnings and makes linting more useful.
+
+  (defvar org-ql-defpred-defer nil
+    "Defer expensive function redefinitions when defining predicates.
 When non-nil, defining a predicate with `org-ql-defpred' does not
 cause the functions `org-ql--normalize-query',
 `org-ql--query-preamble', and `org-ql--query-string-to-sexp' to
@@ -764,62 +774,62 @@ predicates (like at load time), that may be deferred for
 performance (after which those functions should be updated
 manually; see the definition of `org-ql-defpred').")
 
-;; Yes, these two functions are a little hairy: `pcase' is challenging
-;; enough, but splicing forms into one is something else.  But it's
-;; worth it to do this ugly stuff here, in one place, so the
-;; `org-ql-defpred' macro becomes easy to use.
+  ;; Yes, these two functions are a little hairy: `pcase' is challenging
+  ;; enough, but splicing forms into one is something else.  But it's
+  ;; worth it to do this ugly stuff here, in one place, so the
+  ;; `org-ql-defpred' macro becomes easy to use.
 
-(defun org-ql--define-normalize-query-fn (predicates)
-  "Define function `org-ql--normalize-query' for PREDICATES.
+  (defun org-ql--define-normalize-query-fn (predicates)
+    "Define function `org-ql--normalize-query' for PREDICATES.
 PREDICATES should be the value of `org-ql-predicates'."
-  (let ((normalizer-patterns (->> predicates
-                                  (--map (plist-get (cdr it) :normalizers))
-                                  (-flatten-n 1))))
-    (fset 'org-ql--normalize-query
-          (byte-compile
-           `(lambda (query)
-              "Return normalized form of QUERY expression.
+    (let ((normalizer-patterns (->> predicates
+                                    (--map (plist-get (cdr it) :normalizers))
+                                    (-flatten-n 1))))
+      (fset 'org-ql--normalize-query
+            (byte-compile
+             `(lambda (query)
+                "Return normalized form of QUERY expression.
 This function is defined by calling
 `org-ql--define-normalize-query-fn', which uses normalizer forms
 defined in `org-ql-predicates' by calling `org-ql-defpred'."
-              (cl-labels ((rec (element)
-                               (pcase element
-                                 (`(or . ,clauses) `(or ,@(mapcar #'rec clauses)))
-                                 (`(and . ,clauses) `(and ,@(mapcar #'rec clauses)))
-                                 (`(not . ,clauses) `(not ,@(mapcar #'rec clauses)))
-                                 (`(when ,condition . ,clauses) `(when ,(rec condition)
-                                                                   ,@(mapcar #'rec clauses)))
-                                 (`(unless ,condition . ,clauses) `(unless ,(rec condition)
+                (cl-labels ((rec (element)
+                                 (pcase element
+                                   (`(or . ,clauses) `(or ,@(mapcar #'rec clauses)))
+                                   (`(and . ,clauses) `(and ,@(mapcar #'rec clauses)))
+                                   (`(not . ,clauses) `(not ,@(mapcar #'rec clauses)))
+                                   (`(when ,condition . ,clauses) `(when ,(rec condition)
                                                                      ,@(mapcar #'rec clauses)))
-                                 ;; TODO: Combine (regexp) when appropriate (i.e. inside an OR, not an AND).
-                                 ((pred stringp) `(regexp ,element))
+                                   (`(unless ,condition . ,clauses) `(unless ,(rec condition)
+                                                                       ,@(mapcar #'rec clauses)))
+                                   ;; TODO: Combine (regexp) when appropriate (i.e. inside an OR, not an AND).
+                                   ((pred stringp) `(regexp ,element))
 
-                                 ,@normalizer-patterns
+                                   ,@normalizer-patterns
 
-                                 ;; Any other form: passed through unchanged.
-                                 (_ element))))
-                (rec query)))))))
+                                   ;; Any other form: passed through unchanged.
+                                   (_ element))))
+                  (rec query)))))))
 
-(defun org-ql--define-query-preamble-fn (predicates)
-  "Define function `org-ql--query-preamble' for PREDICATES.
+  (defun org-ql--define-query-preamble-fn (predicates)
+    "Define function `org-ql--query-preamble' for PREDICATES.
 PREDICATES should be the value of `org-ql-predicates'."
-  ;; NOTE: I don't how the `list' symbol ends up in the list, but anyway...
-  (let* ((preamble-patterns
-          (-flatten-n 1 (-non-nil
-                         ;; NOTE: Using -let instead of pcase-let here because I can't make map 2.1 install in the test sandbox.
-                         (--map (-let* (((&plist :preambles) (cdr it)))
-                                  (--map (pcase-let* ((`(,pattern ,exp) it))
-                                           `(,pattern
-                                             (-let* (((&plist :regexp :case-fold :query) ,exp))
-                                               (setf org-ql-preamble regexp
-                                                     preamble-case-fold case-fold)
-                                               ;; NOTE: Even when `predicate' is nil, it must be returned in the pcase form.
-                                               query)))
-                                         preambles))
-                                predicates)))))
-    (fset 'org-ql--query-preamble
-          `(lambda (query)
-             "Return preamble data plist for QUERY.
+    ;; NOTE: I don't how the `list' symbol ends up in the list, but anyway...
+    (let* ((preamble-patterns
+            (-flatten-n 1 (-non-nil
+                           ;; NOTE: Using -let instead of pcase-let here because I can't make map 2.1 install in the test sandbox.
+                           (--map (-let* (((&plist :preambles) (cdr it)))
+                                    (--map (pcase-let* ((`(,pattern ,exp) it))
+                                             `(,pattern
+                                               (-let* (((&plist :regexp :case-fold :query) ,exp))
+                                                 (setf org-ql-preamble regexp
+                                                       preamble-case-fold case-fold)
+                                                 ;; NOTE: Even when `predicate' is nil, it must be returned in the pcase form.
+                                                 query)))
+                                           preambles))
+                                  predicates)))))
+      (fset 'org-ql--query-preamble
+            `(lambda (query)
+               "Return preamble data plist for QUERY.
 The plist has the following keys:
 
   :preamble Regexp to search the Org buffer for to find potential
@@ -837,36 +847,36 @@ The plist has the following keys:
 This function is defined by calling
 `org-ql--define-query-preamble-fn', which uses preamble forms
 defined in `org-ql-predicates' by calling `org-ql-defpred'."
-             (pcase org-ql-use-preamble
-               ('nil (list :query query :preamble nil))
-               (_ (let ((preamble-case-fold t)
-                        org-ql-preamble)
-                    (cl-labels ((rec (element)
-                                     (or (when org-ql-preamble
-                                           ;; Only one preamble is allowed
-                                           element)
-                                         (pcase element
-                                           (`(or _) element)
+               (pcase org-ql-use-preamble
+                 ('nil (list :query query :preamble nil))
+                 (_ (let ((preamble-case-fold t)
+                          org-ql-preamble)
+                      (cl-labels ((rec (element)
+                                       (or (when org-ql-preamble
+                                             ;; Only one preamble is allowed
+                                             element)
+                                           (pcase element
+                                             (`(or _) element)
 
-                                           ,@preamble-patterns
+                                             ,@preamble-patterns
 
-                                           (`(and . ,rest)
-                                            (let ((clauses (mapcar #'rec rest)))
-                                              `(and ,@(-non-nil clauses))))
-                                           (_ element)))))
-                      (setq query (pcase (mapcar #'rec (list query))
-                                    ((or `(nil)
-                                         `((nil))
-                                         `((and))
-                                         `((or)))
-                                     t)
-                                    (`(t) t)
-                                    (query (-flatten-n 1 query))))
-                      (list :query query :preamble org-ql-preamble :preamble-case-fold preamble-case-fold)))))))
-    ;; For some reason, byte-compiling the backquoted lambda form directly causes a warning
-    ;; that `query' refers to an unbound variable, even though that's not the case, and the
-    ;; function still works.  But to avoid the warning, we byte-compile it afterward.
-    (byte-compile 'org-ql--query-preamble)))
+                                             (`(and . ,rest)
+                                              (let ((clauses (mapcar #'rec rest)))
+                                                `(and ,@(-non-nil clauses))))
+                                             (_ element)))))
+                        (setq query (pcase (mapcar #'rec (list query))
+                                      ((or `(nil)
+                                           `((nil))
+                                           `((and))
+                                           `((or)))
+                                       t)
+                                      (`(t) t)
+                                      (query (-flatten-n 1 query))))
+                        (list :query query :preamble org-ql-preamble :preamble-case-fold preamble-case-fold)))))))
+      ;; For some reason, byte-compiling the backquoted lambda form directly causes a warning
+      ;; that `query' refers to an unbound variable, even though that's not the case, and the
+      ;; function still works.  But to avoid the warning, we byte-compile it afterward.
+      (byte-compile 'org-ql--query-preamble))))
 
 (cl-defmacro org-ql-defpred (name args docstring &key body preambles normalizers)
   "Define an `org-ql' selector predicate named `org-ql--predicate-NAME'.
@@ -1836,13 +1846,17 @@ of the line after the heading."
             (from (test-timestamps (ts<= from next-ts)))
             (to (test-timestamps (ts<= next-ts to)))))))
 
-;; Predicates defined: stop deferring and define normalizer and preamble functions now.
-(setf org-ql-defpred-defer nil)
-;; Reversing preserves the order in which they were defined.
-;; Generally it shouldn't matter, but it might...
-(org-ql--define-normalize-query-fn (reverse org-ql-predicates))
-(org-ql--define-query-preamble-fn (reverse org-ql-predicates))
-(org-ql--def-query-string-to-sexp-fn (reverse org-ql-predicates))
+(eval-and-compile
+  ;; Predicates defined: stop deferring and define normalizer and preamble functions now.
+
+  ;; NOTE: It's not strictly necessary to do this at compile time, but
+  ;; doing so helps avoid compile warnings and makes linting more useful.
+  (setf org-ql-defpred-defer nil)
+  ;; Reversing preserves the order in which they were defined.
+  ;; Generally it shouldn't matter, but it might...
+  (org-ql--define-normalize-query-fn (reverse org-ql-predicates))
+  (org-ql--define-query-preamble-fn (reverse org-ql-predicates))
+  (org-ql--def-query-string-to-sexp-fn (reverse org-ql-predicates)))
 
 ;;;;; Sorting
 
