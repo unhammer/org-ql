@@ -96,11 +96,10 @@ but the match groups were changed, so they are not compatible.")
 
 (defvar org-ql--today nil)
 
-(eval-and-compile
-  (defvar org-ql-use-preamble t
-    ;; MAYBE: Naming things is hard.  There must be a better term than "preamble."
-    "Use query preambles to speed up searches.
-May be disabled for debugging, benchmarks, etc."))
+(defvar org-ql-use-preamble t
+  ;; MAYBE: Naming things is hard.  There must be a better term than "preamble."
+  "Use query preambles to speed up searches.
+May be disabled for debugging, benchmarks, etc.")
 
 (defvar org-ql-cache (make-hash-table :weakness 'key)
   ;; IIUC, setting weakness to `key' means that, when a buffer is closed,
