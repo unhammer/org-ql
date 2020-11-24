@@ -731,7 +731,7 @@ Arguments STRING, POS, FILL, and LEVEL are according to
                                 )))
                         (pcase parsed-sexp
                           (`(,one-predicate) one-predicate)
-                          (`(,_ . ,_) (cons boolean parsed-sexp))
+                          (`(,_ . ,_) (cons boolean (reverse parsed-sexp)))
                           (_ nil)))))))
     (fset 'org-ql--query-string-to-sexp closure)))
 
@@ -742,9 +742,8 @@ Arguments STRING, POS, FILL, and LEVEL are according to
 (declare-function org-ql--normalize-query "org-ql" (query) t)
 (declare-function org-ql--query-preamble "org-ql" (query) t)
 
-(eval-and-compile
-  (defvar org-ql-defpred-defer nil
-    "Defer expensive function redefinitions when defining predicates.
+(defvar org-ql-defpred-defer nil
+  "Defer expensive function redefinitions when defining predicates.
 When non-nil, defining a predicate with `org-ql-defpred' does not
 cause the functions `org-ql--normalize-query',
 `org-ql--query-preamble', and `org-ql--query-string-to-sexp' to
@@ -752,7 +751,7 @@ be redefined.  These functions must be redefined in order to
 account for new predicates, but when defining many
 predicates (like at load time), that may be deferred for
 performance (after which those functions should be updated
-manually; see the definition of `org-ql-defpred')."))
+manually; see the definition of `org-ql-defpred').")
 
 ;; Yes, these two functions are a little hairy: `pcase' is challenging
 ;; enough, but splicing forms into one is something else.  But it's
@@ -1007,10 +1006,9 @@ predicates."
 
 ;;;;;; Predicates
 
-(cl-eval-when (compile load eval)
-  ;; Improve load time by deferring the per-predicate preamble- and normalizer-function
-  ;; redefinitions until all of the predicates have been defined.
-  (setf org-ql-defpred-defer t))
+;; Improve load time by deferring the per-predicate preamble- and normalizer-function
+;; redefinitions until all of the predicates have been defined.
+(setf org-ql-defpred-defer t)
 
 (org-ql-defpred category (&rest categories)
   "Return non-nil if current heading is in one or more of CATEGORIES (a list of strings)."
@@ -1825,16 +1823,9 @@ of the line after the heading."
             (from (test-timestamps (ts<= from next-ts)))
             (to (test-timestamps (ts<= next-ts to)))))))
 
-;; (eval-and-compile
-;;   ;; Predicates defined: stop deferring and define normalizer and preamble functions now.
-;;
-;;   ;; NOTE: It's not strictly necessary to do this at compile time, but
-;;   ;; doing so helps avoid compile warnings and makes linting more useful.
-;;   (setf org-ql-defpred-defer nil)
-;;   ;; Reversing preserves the order in which they were defined.
-;;   ;; Generally it shouldn't matter, but it might...
-;;   )
-
+;; NOTE: Predicates defined: stop deferring and define normalizer and
+;; preamble functions now.  Reversing preserves the order in which
+;; they were defined.  Generally it shouldn't matter, but it might...
 (setf org-ql-defpred-defer nil)
 (org-ql--define-normalize-query-fn (reverse org-ql-predicates))
 (org-ql--define-query-preamble-fn (reverse org-ql-predicates))
