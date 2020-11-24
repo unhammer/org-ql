@@ -719,11 +719,12 @@ Arguments STRING, POS, FILL, and LEVEL are according to
                             (-sort (-on #'> #'length)))))
       (fset 'org-ql--query-string-to-sexp
             (byte-compile
-             `(lambda (input &optional (boolean 'and))
+             `(lambda (input &optional boolean)
                 "Return query parsed from plain query string INPUT.
-  Multiple predicates are combined with BOOLEAN."
+  Multiple predicates are combined with BOOLEAN (default: `and')."
                 (unless (s-blank-str? input)
-                  (let* ((query (org-ql--peg-parse-string
+                  (let* ((boolean (or boolean 'and))
+                         (query (org-ql--peg-parse-string
                                  ((query (+ term
                                             (opt (+ (syntax-class whitespace) (any)))))
                                   (term (or (and negation (list positive-term)
