@@ -1859,7 +1859,7 @@ of the line after the heading."
   ;; Generally it shouldn't matter, but it might...
   (org-ql--define-normalize-query-fn (reverse org-ql-predicates))
   (org-ql--define-query-preamble-fn (reverse org-ql-predicates))
-  ;; (org-ql--def-query-string-to-sexp-fn (reverse org-ql-predicates))
+  (org-ql--def-query-string-to-sexp-fn (reverse org-ql-predicates))
   )
 
 ;;;;; Sorting
