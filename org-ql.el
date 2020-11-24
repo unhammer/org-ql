@@ -784,7 +784,7 @@ Arguments STRING, POS, FILL, and LEVEL are according to
                                      ;; function--every entry point is a macro, which means that, since
                                      ;; we define our PEG rules at runtime when predicates are defined,
                                      ;; we either have to use `eval', or we have to macroexpand manually.
-                                     ,(macroexpand-all `(peg-parse ,@pexs)))))
+                                     (with-peg-rules ,pexs (peg-run (peg ,(caar pexs)) #'peg-signal-failure)))))
                              (pcase parsed-sexp
                                (`(,one-predicate) one-predicate)
                                (`(,_ . ,_) (cons boolean parsed-sexp))
