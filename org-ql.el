@@ -670,12 +670,13 @@ Arguments STRING, POS, FILL, and LEVEL are according to
 ;; This section implements parsing of "plain," non-Lisp queries using the `peg'
 ;; library.  NOTE: This needs to appear after the predicates are defined.
 
+(require 'peg)
+
 (eval-and-compile
   ;; This `eval-when' is necessary, otherwise the macro does not define
   ;; the function correctly, apparently because `org-ql-predicates'
   ;; ends up being not defined correctly at expansion time.
 
-  (require 'peg)
   ;; Fix compiler warnings probably caused by `peg' not using lexical-binding.
   ;; TODO: File bug report upstream.
   (defvar peg-errors nil)
@@ -1881,9 +1882,10 @@ of the line after the heading."
   ;; Reversing preserves the order in which they were defined.
   ;; Generally it shouldn't matter, but it might...
   (org-ql--define-normalize-query-fn (reverse org-ql-predicates))
-  (org-ql--define-query-preamble-fn (reverse org-ql-predicates))
-  (org-ql--def-query-string-to-sexp-fn (reverse org-ql-predicates))
-  )
+  (org-ql--define-query-preamble-fn (reverse org-ql-predicates)))
+
+;; Only at load time
+(org-ql--def-query-string-to-sexp-fn (reverse org-ql-predicates))
 
 ;;;;; Sorting
 
