@@ -676,6 +676,7 @@ Arguments STRING, POS, FILL, and LEVEL are according to
   ;; This `eval-when' is necessary, otherwise the macro does not define
   ;; the function correctly, apparently because `org-ql-predicates'
   ;; ends up being not defined correctly at expansion time.
+  (require 'peg)
 
   ;; Fix compiler warnings probably caused by `peg' not using lexical-binding.
   ;; TODO: File bug report upstream.
