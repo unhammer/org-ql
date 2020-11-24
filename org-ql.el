@@ -736,7 +736,7 @@ Arguments STRING, POS, FILL, and LEVEL are according to
                                  (`(,one-predicate) one-predicate)
                                  (`(,_ . ,_) (cons boolean parsed-sexp))
                                  (_ nil)))))))
-      ;; (fset 'org-ql--query-string-to-sexp (byte-compile lambda-form))
+      (fset 'org-ql--query-string-to-sexp (byte-compile lambda-form))
       )))
 
 ;;;;; Predicate definition
