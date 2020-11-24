@@ -709,28 +709,28 @@ Arguments STRING, POS, FILL, and LEVEL are according to
                  (unquoted-arg (substring (+ (not (or separator "\"" (syntax-class whitespace))) (any))))
                  (negation "!")
                  (separator "," )))
-         (lambda-form (eval `(lambda (input &optional boolean)
-                               "Return query parsed from plain query string INPUT.
+         (lambda-form `(lambda (input &optional boolean)
+                         "Return query parsed from plain query string INPUT.
   Multiple predicates are combined with BOOLEAN (default: `and')."
-                               (unless (s-blank-str? input)
-                                 (let* ((boolean (or boolean 'and))
-                                        (parsed-sexp
-                                         (with-temp-buffer
-                                           (insert input)
-                                           (goto-char (point-min))
-                                           ;; Copied from `peg-parse'.  There is no function in `peg' that
-                                           ;; returns a matcher function--every entry point is a macro,
-                                           ;; which means that, since we define our PEG rules at runtime when
-                                           ;; predicates are defined, we either have to use `eval', or we
-                                           ;; have to borrow some code.  It ends up that we only have to
-                                           ;; borrow this `with-peg-rules' call, which isn't too bad.
-                                           (with-peg-rules ,pexs
-                                             (peg-run (peg ,(caar pexs)) #'peg-signal-failure))
-                                           )))
-                                   (pcase parsed-sexp
-                                     (`(,one-predicate) one-predicate)
-                                     (`(,_ . ,_) (cons boolean parsed-sexp))
-                                     (_ nil))))))))
+                         (unless (s-blank-str? input)
+                           (let* ((boolean (or boolean 'and))
+                                  (parsed-sexp
+                                   (with-temp-buffer
+                                     (insert input)
+                                     (goto-char (point-min))
+                                     ;; Copied from `peg-parse'.  There is no function in `peg' that
+                                     ;; returns a matcher function--every entry point is a macro,
+                                     ;; which means that, since we define our PEG rules at runtime when
+                                     ;; predicates are defined, we either have to use `eval', or we
+                                     ;; have to borrow some code.  It ends up that we only have to
+                                     ;; borrow this `with-peg-rules' call, which isn't too bad.
+                                     (eval `(with-peg-rules ,,pexs
+                                              (peg-run (peg ,,(caar pexs)) #'peg-signal-failure)))
+                                     )))
+                             (pcase parsed-sexp
+                               (`(,one-predicate) one-predicate)
+                               (`(,_ . ,_) (cons boolean parsed-sexp))
+                               (_ nil)))))))
     (fset 'org-ql--query-string-to-sexp (byte-compile lambda-form))
     ))
 
