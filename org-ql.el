@@ -672,68 +672,6 @@ Arguments STRING, POS, FILL, and LEVEL are according to
 
 (require 'peg)
 
-;; (defun org-ql--def-query-string-to-sexp-fn (predicates)
-;;   "Define function `org-ql--query-string-to-sexp' according to PREDICATES.
-;;   Builds the PEG expression using PREDICATES (which should be the
-;;   value of `org-ql-predicates')."
-;;   (let* ((names (--map (symbol-name (plist-get (cdr it) :name))
-;;                        predicates))
-;;          (aliases (->> predicates
-;;                        (--map (plist-get (cdr it) :aliases))
-;;                        -non-nil
-;;                        -flatten
-;;                        (-map #'symbol-name)))
-;;          (predicates (->> (append names aliases)
-;;                           -uniq
-;;                           ;; Sort the keywords longest-first to work around what seems to be an
-;;                           ;; obscure bug in `peg': when one keyword is a substring of another,
-;;                           ;; and the shorter one is listed first, the shorter one fails to match.
-;;                           (-sort (-on #'> #'length))))
-;;          (pexs `((query (+ term
-;;                            (opt (+ (syntax-class whitespace) (any)))))
-;;                  (term (or (and negation (list positive-term)
-;;                                 ;; This is a bit confusing, but it seems to work.  There's probably a better way.
-;;                                 `(pred -- (list 'not (car pred))))
-;;                            positive-term))
-;;                  (positive-term (or (and predicate-with-args `(pred args -- (cons (intern pred) args)))
-;;                                     (and predicate-without-args `(pred -- (list (intern pred))))
-;;                                     (and plain-string `(s -- (list 'regexp s)))))
-;;                  (plain-string (or quoted-arg unquoted-arg))
-;;                  (predicate-with-args (substring predicate) ":" args)
-;;                  (predicate-without-args (substring predicate) ":")
-;;                  (predicate (or ,@predicates))
-;;                  (args (list (+ (and (or keyword-arg quoted-arg unquoted-arg) (opt separator)))))
-;;                  (keyword-arg (and keyword "=" `(kw -- (intern (concat ":" kw)))))
-;;                  (keyword (substring (+ (not (or separator "=" "\"" (syntax-class whitespace))) (any))))
-;;                  (quoted-arg "\"" (substring (+ (not (or separator "\"")) (any))) "\"")
-;;                  (unquoted-arg (substring (+ (not (or separator "\"" (syntax-class whitespace))) (any))))
-;;                  (negation "!")
-;;                  (separator "," )))
-;;          (lambda-form (lambda (input &optional boolean)
-;;                         "Return query parsed from plain query string INPUT.
-;;   Multiple predicates are combined with BOOLEAN (default: `and')."
-;;                         (unless (s-blank-str? input)
-;;                           (let* ((boolean (or boolean 'and))
-;;                                  (parsed-sexp
-;;                                   (with-temp-buffer
-;;                                     (insert input)
-;;                                     (goto-char (point-min))
-;;                                     ;; Copied from `peg-parse'.  There is no function in `peg' that
-;;                                     ;; returns a matcher function--every entry point is a macro,
-;;                                     ;; which means that, since we define our PEG rules at runtime when
-;;                                     ;; predicates are defined, we either have to use `eval', or we
-;;                                     ;; have to borrow some code.  It ends up that we only have to
-;;                                     ;; borrow this `with-peg-rules' call, which isn't too bad.
-;;                                     (eval `(with-peg-rules ,pexs
-;;                                              (peg-run (peg ,(caar pexs)) #'peg-signal-failure)))
-;;                                     )))
-;;                             (pcase parsed-sexp
-;;                               (`(,one-predicate) one-predicate)
-;;                               (`(,_ . ,_) (cons boolean parsed-sexp))
-;;                               (_ nil)))))))
-;;     (fset 'org-ql--query-string-to-sexp (byte-compile lambda-form))
-;;     ))
-
 (defun org-ql--def-query-string-to-sexp-fn (predicates)
   "Define function `org-ql--query-string-to-sexp' according to PREDICATES.
   Builds the PEG expression using PREDICATES (which should be the
@@ -770,27 +708,90 @@ Arguments STRING, POS, FILL, and LEVEL are according to
                  (quoted-arg "\"" (substring (+ (not (or separator "\"")) (any))) "\"")
                  (unquoted-arg (substring (+ (not (or separator "\"" (syntax-class whitespace))) (any))))
                  (negation "!")
-                 (separator ",")))
-         (peg-parse-form (macroexpand `(peg-parse ,@pexs)))
-         (lambda-form `(lambda (input &optional boolean)
-                         "Return query parsed from plain query string INPUT.
+                 (separator "," )))
+         (lambda-form (lambda (input &optional boolean)
+                        "Return query parsed from plain query string INPUT.
   Multiple predicates are combined with BOOLEAN (default: `and')."
-                         (unless (s-blank-str? input)
-                           (let* ((boolean (or boolean 'and))
-                                  (parsed-sexp
-                                   (with-temp-buffer
-                                     (insert input)
-                                     (goto-char (point-min))
-                                     ;; HACK: There is no function in `peg' that returns a matcher
-                                     ;; function--every entry point is a macro, which means that, since
-                                     ;; we define our PEG rules at runtime when predicates are defined,
-                                     ;; we either have to use `eval', or we have to macroexpand manually.
-                                     ,peg-parse-form)))
-                             (pcase parsed-sexp
-                               (`(,one-predicate) one-predicate)
-                               (`(,_ . ,_) (cons boolean parsed-sexp))
-                               (_ nil)))))))
-    (fset 'org-ql--query-string-to-sexp (byte-compile lambda-form))))
+                        (unless (s-blank-str? input)
+                          (let* ((boolean (or boolean 'and))
+                                 (parsed-sexp
+                                  (with-temp-buffer
+                                    (insert input)
+                                    (goto-char (point-min))
+                                    ;; Copied from `peg-parse'.  There is no function in `peg' that
+                                    ;; returns a matcher function--every entry point is a macro,
+                                    ;; which means that, since we define our PEG rules at runtime when
+                                    ;; predicates are defined, we either have to use `eval', or we
+                                    ;; have to borrow some code.  It ends up that we only have to
+                                    ;; borrow this `with-peg-rules' call, which isn't too bad.
+                                    (eval `(with-peg-rules ,pexs
+                                             (peg-run (peg ,(caar pexs)) #'peg-signal-failure)))
+                                    )))
+                            (pcase parsed-sexp
+                              (`(,one-predicate) one-predicate)
+                              (`(,_ . ,_) (cons boolean parsed-sexp))
+                              (_ nil)))))))
+    (ignore predicates names aliases)
+    (fset 'org-ql--query-string-to-sexp (byte-compile lambda-form))
+    ))
+
+;; (defun org-ql--def-query-string-to-sexp-fn (predicates)
+;;   "Define function `org-ql--query-string-to-sexp' according to PREDICATES.
+;;   Builds the PEG expression using PREDICATES (which should be the
+;;   value of `org-ql-predicates')."
+;;   (let* ((names (--map (symbol-name (plist-get (cdr it) :name))
+;;                        predicates))
+;;          (aliases (->> predicates
+;;                        (--map (plist-get (cdr it) :aliases))
+;;                        -non-nil
+;;                        -flatten
+;;                        (-map #'symbol-name)))
+;;          (predicates (->> (append names aliases)
+;;                           -uniq
+;;                           ;; Sort the keywords longest-first to work around what seems to be an
+;;                           ;; obscure bug in `peg': when one keyword is a substring of another,
+;;                           ;; and the shorter one is listed first, the shorter one fails to match.
+;;                           (-sort (-on #'> #'length))))
+;;          (pexs `((query (+ term
+;;                            (opt (+ (syntax-class whitespace) (any)))))
+;;                  (term (or (and negation (list positive-term)
+;;                                 ;; This is a bit confusing, but it seems to work.  There's probably a better way.
+;;                                 `(pred -- (list 'not (car pred))))
+;;                            positive-term))
+;;                  (positive-term (or (and predicate-with-args `(pred args -- (cons (intern pred) args)))
+;;                                     (and predicate-without-args `(pred -- (list (intern pred))))
+;;                                     (and plain-string `(s -- (list 'regexp s)))))
+;;                  (plain-string (or quoted-arg unquoted-arg))
+;;                  (predicate-with-args (substring predicate) ":" args)
+;;                  (predicate-without-args (substring predicate) ":")
+;;                  (predicate (or ,@predicates))
+;;                  (args (list (+ (and (or keyword-arg quoted-arg unquoted-arg) (opt separator)))))
+;;                  (keyword-arg (and keyword "=" `(kw -- (intern (concat ":" kw)))))
+;;                  (keyword (substring (+ (not (or separator "=" "\"" (syntax-class whitespace))) (any))))
+;;                  (quoted-arg "\"" (substring (+ (not (or separator "\"")) (any))) "\"")
+;;                  (unquoted-arg (substring (+ (not (or separator "\"" (syntax-class whitespace))) (any))))
+;;                  (negation "!")
+;;                  (separator ",")))
+;;          (peg-parse-form (macroexpand `(peg-parse ,@pexs)))
+;;          (lambda-form `(lambda (input &optional boolean)
+;;                          "Return query parsed from plain query string INPUT.
+;;   Multiple predicates are combined with BOOLEAN (default: `and')."
+;;                          (unless (s-blank-str? input)
+;;                            (let* ((boolean (or boolean 'and))
+;;                                   (parsed-sexp
+;;                                    (with-temp-buffer
+;;                                      (insert input)
+;;                                      (goto-char (point-min))
+;;                                      ;; HACK: There is no function in `peg' that returns a matcher
+;;                                      ;; function--every entry point is a macro, which means that, since
+;;                                      ;; we define our PEG rules at runtime when predicates are defined,
+;;                                      ;; we either have to use `eval', or we have to macroexpand manually.
+;;                                      ,peg-parse-form)))
+;;                              (pcase parsed-sexp
+;;                                (`(,one-predicate) one-predicate)
+;;                                (`(,_ . ,_) (cons boolean parsed-sexp))
+;;                                (_ nil)))))))
+;;     (fset 'org-ql--query-string-to-sexp (byte-compile lambda-form))))
 
 ;;;;; Predicate definition
 
