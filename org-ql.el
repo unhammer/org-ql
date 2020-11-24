@@ -729,14 +729,15 @@ Arguments STRING, POS, FILL, and LEVEL are according to
                                        ;; predicates are defined, we either have to use `eval', or we
                                        ;; have to borrow some code.  It ends up that we only have to
                                        ;; borrow this `with-peg-rules' call, which isn't too bad.
-                                       ;; (with-peg-rules ,pexs
-                                       ;;   (peg-run (peg ,(caar pexs)) #'peg-signal-failure))
+                                       (with-peg-rules ,pexs
+                                         (peg-run (peg ,(caar pexs)) #'peg-signal-failure))
                                        )))
                                (pcase parsed-sexp
                                  (`(,one-predicate) one-predicate)
                                  (`(,_ . ,_) (cons boolean parsed-sexp))
                                  (_ nil)))))))
-      (fset 'org-ql--query-string-to-sexp (byte-compile lambda-form)))))
+      ;; (fset 'org-ql--query-string-to-sexp (byte-compile lambda-form))
+      )))
 
 ;;;;; Predicate definition
 
