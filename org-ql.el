@@ -700,57 +700,57 @@ Arguments STRING, POS, FILL, and LEVEL are according to
                           . ,rules))
           `(peg-parse . ,rules))))
 
-  ;; (defun org-ql--def-query-string-to-sexp-fn (predicates)
-  ;;     "Define function `org-ql--query-string-to-sexp' according to PREDICATES.
-  ;; Builds the PEG expression using PREDICATES (which should be the
-  ;; value of `org-ql-predicates')."
-  ;;     (let* ((names (--map (symbol-name (plist-get (cdr it) :name))
-  ;;                          predicates))
-  ;;            (aliases (->> predicates
-  ;;                          (--map (plist-get (cdr it) :aliases))
-  ;;                          -non-nil
-  ;;                          -flatten
-  ;;                          (-map #'symbol-name)))
-  ;;            (predicates (->> (append names aliases)
-  ;;                             -uniq
-  ;;                             ;; Sort the keywords longest-first to work around what seems to be an
-  ;;                             ;; obscure bug in `peg': when one keyword is a substring of another,
-  ;;                             ;; and the shorter one is listed first, the shorter one fails to match.
-  ;;                             (-sort (-on #'> #'length)))))
-  ;;       (fset 'org-ql--query-string-to-sexp
-  ;;             (byte-compile
-  ;;              `(cl-function
-  ;;                (lambda (input &optional (boolean 'and))
-  ;;                  "Return query parsed from plain query string INPUT.
-  ;; Multiple predicates are combined with BOOLEAN."
-  ;;                  (unless (s-blank-str? input)
-  ;;                    (let* ((query (org-ql--peg-parse-string
-  ;;                                   ((query (+ term
-  ;;                                              (opt (+ (syntax-class whitespace) (any)))))
-  ;;                                    (term (or (and negation (list positive-term)
-  ;;                                                   ;; This is a bit confusing, but it seems to work.  There's probably a better way.
-  ;;                                                   `(pred -- (list 'not (car pred))))
-  ;;                                              positive-term))
-  ;;                                    (positive-term (or (and predicate-with-args `(pred args -- (cons (intern pred) args)))
-  ;;                                                       (and predicate-without-args `(pred -- (list (intern pred))))
-  ;;                                                       (and plain-string `(s -- (list 'regexp s)))))
-  ;;                                    (plain-string (or quoted-arg unquoted-arg))
-  ;;                                    (predicate-with-args (substring predicate) ":" args)
-  ;;                                    (predicate-without-args (substring predicate) ":")
-  ;;                                    (predicate (or ,@predicates))
-  ;;                                    (args (list (+ (and (or keyword-arg quoted-arg unquoted-arg) (opt separator)))))
-  ;;                                    (keyword-arg (and keyword "=" `(kw -- (intern (concat ":" kw)))))
-  ;;                                    (keyword (substring (+ (not (or separator "=" "\"" (syntax-class whitespace))) (any))))
-  ;;                                    (quoted-arg "\"" (substring (+ (not (or separator "\"")) (any))) "\"")
-  ;;                                    (unquoted-arg (substring (+ (not (or separator "\"" (syntax-class whitespace))) (any))))
-  ;;                                    (negation "!")
-  ;;                                    (separator "," ))
-  ;;                                   input 'noerror)))
-  ;;                      ;; Discard the t that `peg-parse-string' always returns as the first
-  ;;                      ;; element.  I don't know what it means, but we don't want it.
-  ;;                      (if (> (length (cdr query)) 1)
-  ;;                          (cons boolean (nreverse (cdr query)))
-  ;;                        (cadr query))))))))))
+  (defun org-ql--def-query-string-to-sexp-fn (predicates)
+    "Define function `org-ql--query-string-to-sexp' according to PREDICATES.
+  Builds the PEG expression using PREDICATES (which should be the
+  value of `org-ql-predicates')."
+    (let* ((names (--map (symbol-name (plist-get (cdr it) :name))
+                         predicates))
+           (aliases (->> predicates
+                         (--map (plist-get (cdr it) :aliases))
+                         -non-nil
+                         -flatten
+                         (-map #'symbol-name)))
+           (predicates (->> (append names aliases)
+                            -uniq
+                            ;; Sort the keywords longest-first to work around what seems to be an
+                            ;; obscure bug in `peg': when one keyword is a substring of another,
+                            ;; and the shorter one is listed first, the shorter one fails to match.
+                            (-sort (-on #'> #'length)))))
+      (fset 'org-ql--query-string-to-sexp
+            (byte-compile
+             `(cl-function
+               (lambda (input &optional (boolean 'and))
+                 "Return query parsed from plain query string INPUT.
+  Multiple predicates are combined with BOOLEAN."
+                 (unless (s-blank-str? input)
+                   (let* ((query (org-ql--peg-parse-string
+                                  ((query (+ term
+                                             (opt (+ (syntax-class whitespace) (any)))))
+                                   (term (or (and negation (list positive-term)
+                                                  ;; This is a bit confusing, but it seems to work.  There's probably a better way.
+                                                  `(pred -- (list 'not (car pred))))
+                                             positive-term))
+                                   (positive-term (or (and predicate-with-args `(pred args -- (cons (intern pred) args)))
+                                                      (and predicate-without-args `(pred -- (list (intern pred))))
+                                                      (and plain-string `(s -- (list 'regexp s)))))
+                                   (plain-string (or quoted-arg unquoted-arg))
+                                   (predicate-with-args (substring predicate) ":" args)
+                                   (predicate-without-args (substring predicate) ":")
+                                   (predicate (or ,@predicates))
+                                   (args (list (+ (and (or keyword-arg quoted-arg unquoted-arg) (opt separator)))))
+                                   (keyword-arg (and keyword "=" `(kw -- (intern (concat ":" kw)))))
+                                   (keyword (substring (+ (not (or separator "=" "\"" (syntax-class whitespace))) (any))))
+                                   (quoted-arg "\"" (substring (+ (not (or separator "\"")) (any))) "\"")
+                                   (unquoted-arg (substring (+ (not (or separator "\"" (syntax-class whitespace))) (any))))
+                                   (negation "!")
+                                   (separator "," ))
+                                  input 'noerror)))
+                     ;; Discard the t that `peg-parse-string' always returns as the first
+                     ;; element.  I don't know what it means, but we don't want it.
+                     (if (> (length (cdr query)) 1)
+                         (cons boolean (nreverse (cdr query)))
+                       (cadr query))))))))))
   )
 
 ;;;;; Predicate definition
