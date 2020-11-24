@@ -733,7 +733,7 @@ Arguments STRING, POS, FILL, and LEVEL are according to
                                          (peg-run (peg ,(caar pexs)) #'peg-signal-failure)))))
                                (pcase parsed-sexp
                                  (`(,one-predicate) one-predicate)
-                                 (`(,_ . ,_) `(,boolean ,@parsed-sexp))
+                                 (`(,_ . ,_) (cons boolean parsed-sexp))
                                  (_ nil)))))))
       (fset 'org-ql--query-string-to-sexp (byte-compile lambda-form)))))
 
