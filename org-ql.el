@@ -982,7 +982,7 @@ It would be expanded to:
          ;; Reversing preserves the order in which predicates were defined.
          (org-ql--define-normalize-query-fn (reverse org-ql-predicates))
          (org-ql--define-query-preamble-fn (reverse org-ql-predicates))
-         ;; (org-ql--def-query-string-to-sexp-fn (reverse org-ql-predicates))
+         (org-ql--def-query-string-to-sexp-fn (reverse org-ql-predicates))
          ))))
 
 (defmacro org-ql--from-to-on ()
