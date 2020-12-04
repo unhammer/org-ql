@@ -109,6 +109,18 @@ FILENAME should be a file in the \"tests\" directory."
        (expand-file-name filename)
        find-file-noselect))
 
+(defun org-ql-test-absolute-days (ts)
+  "Absolute days should be the same as `time-to-days' of `encode-time' for all TS."
+  (eq (org-ql-ts-to-absolute-days ts)
+      (time-to-days
+       (encode-time
+        (list 0 0 12
+              (ts-d ts) (ts-m ts) (ts-year ts)
+              'ignored
+              (- 1)
+              (ts-tz-offset ts))))))
+
+
 ;;;; Macros
 
 (defmacro org-ql-it (description &rest body)
@@ -1611,6 +1623,30 @@ RESULTS should be a list of strings as returned by
 
     ;; MAYBE: Also test `org-ql-views', although I already know it works now.
     ;; (describe "org-ql-views")
+
+    (describe "Helpers"
+              (describe "parse repeats"
+                        (let* ((the-future 2007078148)
+                               (ntests 1000)
+                               (timestamps (mapcar (lambda (_) (make-ts :unix (random the-future)))
+                                                   (make-list ntests nil))))
+
+                          (it "should have equal absolute days time-to-days encode-time"
+                              (expect (remove t
+                                              (mapcar #'org-ql-test-absolute-days timestamps))
+                                      :to-equal nil))
+                          (it "should parse repeats"
+                              (expect (ts-format "%Y-%m-%d %H:%M:%S"
+                                                 (org-ql-parse-first-repeat "<2020-12-02 +1w>"
+                                                                            (org-ql-ts-to-absolute-days
+                                                                             (make-ts :year 2020 :month 12 :day 4))))
+                                      :to-equal "2020-12-09 00:00:00"))
+                          (it "should parse non-repeats"
+                              (expect (ts-format "%Y-%m-%d %H:%M:%S"
+                                                 (org-ql-parse-first-repeat "<2020-12-02>"
+                                                                            (org-ql-ts-to-absolute-days
+                                                                             (make-ts :year 2020 :month 12 :day 4))))
+                                      :to-equal "2020-12-02 00:00:00")))))
     ))
 
 ;; Local Variables:

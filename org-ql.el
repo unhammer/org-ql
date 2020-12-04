@@ -539,6 +539,30 @@ returns nil."
                                    query-string " Execute it? "))
         (user-error "Query aborted by user")))))
 
+(defun org-ql-ts-to-absolute-days (ts)
+  "The absolute date corresponding to TS.
+Return value as in `time-to-days'."
+  (let ((year (ts-year ts)))
+    (+ (ts-day-of-year ts)              ;	Days this year
+       (* 365 (1- year))		;	+ Days in prior years
+       (/ (1- year) 4)			;	+ Julian leap years
+       (- (/ (1- year) 100))		;	- century years
+       (/ (1- year) 400))))
+
+(defun org-ql-parse-first-repeat (org-ts-string from-day)
+  "Parse org timestamp ORG-TS-STRING into ts structure.
+If it has repeats, use the nearest instance at or after
+FROM-DAY (an abolute date as given by `time-to-days' or
+`org-ql-ts-to-absolute-days')."
+  (if (string-match "\\+\\([0-9]+\\)\\([hdwmy]\\)" org-ts-string) ; regexp from `org-closest-date'
+      (let* ((initial-ts (ts-parse-org org-ts-string))
+             (initial-day (org-ql-ts-to-absolute-days initial-ts))
+             (upcoming-day (org-time-string-to-absolute org-ts-string from-day 'future))
+             (adjustment (- upcoming-day initial-day)))
+        (ts-adjust 'day adjustment initial-ts))
+    ;; No repeats, just use the regular parse:
+    (ts-parse-org org-ts-string)))
+
 ;;;;; Query processing
 
 ;; Processing, compiling, etc. for queries.
